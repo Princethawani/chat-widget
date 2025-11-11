@@ -89,10 +89,10 @@ async function handleSubmit() {
     const payload = {
       name: form.value.name,
       email: form.value.email,
-      company: form.value.company
+      company_name: form.value.company
     }
 
-    const response = await axios.post('http://localhost:9000/api/register', payload)
+    const response = await axios.post('https://ryu.futuremultiverse.com/chatbot_backend/api/register', payload)
 
     // If registration is successful
     if (response.data.success && response.data.user) {
@@ -109,10 +109,15 @@ async function handleSubmit() {
     } else {
       alert(response.data.message || 'Registration failed. Please try again.')
     }
-  } catch (error) {
-    console.error('Registration error:', error)
-    alert('Something went wrong while connecting to the server.')
-  } finally {
+      } catch (error) {
+        console.error('Registration error:', error.response || error)
+        alert(
+          error.response?.data?.message ||
+          error.message ||
+        'Something went wrong while connecting to the server.'
+      )
+    }
+   finally {
     loading.value = false
   }
 }
