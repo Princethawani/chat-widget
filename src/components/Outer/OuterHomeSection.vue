@@ -5,8 +5,8 @@
       <!-- Header -->
       <div class="header">
         <img class="future-logo" :src="botLogo" alt="Bot Logo" />
-        <h2>Hi there, I‘m Ryu! 👋</h2>
-        <p>How can we help you?</p>
+        <h2>{{ headerTitle }}</h2>
+        <p>{{ headerSubtitle }}</p>
       </div>
 
       <!-- Options list -->
@@ -27,10 +27,10 @@
       <!-- Chat section -->
       <div class="chat-section" @click="goToRegistration">
         <div class="chat-info">
-          <strong>Chat with RyuAI / Support</strong>
-          <p>Have questions? RyuAI is here to assist you</p>
+          <strong>{{ chatTitle }}</strong>
+          <p>{{ chatSubtitle }}</p>
         </div>
-        <img :src="SendIcon" alt="Send Icon" class="chat-icon" />
+        <img :src="sendIcon" alt="Send Icon" class="chat-icon" />
       </div>
     </div>
 
@@ -47,7 +47,7 @@
         @click="setTab('home')"
       >
         <div class="icon-wrapper">
-          <HomeIcon class="icon" />
+          <component :is="HomeIconRef" class="icon" />
         </div>
         <span>Home</span>
       </div>
@@ -58,42 +58,55 @@
         @click="goToRegistration"
       >
         <div class="icon-wrapper">
-          <ChatIcon class="icon" />
+          <component :is="ChatIconRef" class="icon" />
         </div>
         <span>Chat</span>
       </div>
     </div>
 
     <div class="powered">
-      <span>Powered by </span><strong>GraceAI</strong>
+      <span>Powered by </span><strong>{{ poweredBy }}</strong>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import botLogo from '@/assets/icons/bot.png'
+import { ref, inject } from 'vue'
+import RegistrationForm from '../RegistrationForm.vue'
 
-// Import SVG as image
+// ES module imports instead of require()
+import BotLogo from '../../assets/icons/bot.png'
 import SendIcon from '../../assets/icons/send.svg'
+import HomeIcon from '../../assets/icons/homeIcon.vue'
+import ChatIcon from '../../assets/icons/chatIcon.vue'
 
-// Icons
-import HomeIcon from '@/assets/icons/homeIcon.vue'
-import ChatIcon from '@/assets/icons/chatIcon.vue'
+// Inject library config
+const config = inject('chatWidgetConfig', {})
 
-// Registration form
-import RegistrationForm from '@/components/RegistrationForm.vue'
+// Assets with fallback
+const botLogo = ref(config.botLogo || BotLogo)
+const sendIcon = ref(config.sendIcon || SendIcon)
+const HomeIconRef = ref(config.HomeIcon || HomeIcon)
+const ChatIconRef = ref(config.ChatIcon || ChatIcon)
 
-const emit = defineEmits(['goToRegistration'])
+// Text / labels
+const headerTitle = config.headerTitle || 'Hi there, I‘m Ryu! 👋'
+const headerSubtitle = config.headerSubtitle || 'How can we help you?'
+const chatTitle = config.chatTitle || 'Chat with RyuAI / Support'
+const chatSubtitle = config.chatSubtitle || 'Have questions? RyuAI is here to assist you'
+const poweredBy = config.poweredBy || 'GraceAI'
 
+// Component state
 const showRegistration = ref(false)
 const activeTab = ref('home')
-const options = ref([
+const options = ref(config.options || [
   { text: 'Explore FMV Offers' },
   { text: 'Order FMV Packages' },
   { text: 'Explore GuideBook' },
   { text: 'Chat with RyuAI / Support' }
 ])
+
+const emit = defineEmits(['goToRegistration'])
 
 function handleOption(item) {
   emit('goToRegistration', item.text)

@@ -1,8 +1,6 @@
-// src/components/Board/BoardHeader.vue
 <template>
   <header class="topbar">
     <div class="brand">
-      <!-- Use your asset icon instead of the emoji -->
       <img class="avatar" :src="icon" alt="Bot Icon" />
       <div>
         <strong>GraceAI</strong>
@@ -14,7 +12,14 @@
 </template>
 
 <script setup>
-import icon from '@/assets/icons/bot.png' // replace with your actual file path
+defineProps({
+  icon: {
+    type: String,
+    // default: () => require('@/assets/icons/bot.png')
+      default: () => require('../../assets/icons/bot.png')
+
+  }
+})
 </script>
 
 <style scoped>
@@ -23,7 +28,7 @@ import icon from '@/assets/icons/bot.png' // replace with your actual file path
   justify-content: space-between;
   align-items: center;
   padding: 10px 12px;
-  background: var(--gold);
+  background: var(--chat-primary, #d4ae69);
   color: #fff;
 }
 .brand {

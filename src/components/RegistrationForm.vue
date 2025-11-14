@@ -1,3 +1,4 @@
+// src/components/RegistrationForm.vue
 <template>
   <div class="home-page">
     <div class="header">
@@ -52,23 +53,26 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, inject } from 'vue'
 import axios from 'axios'
-import defaultLogo from '@/assets/img/bot.png'
+// import defaultLogo from '@/assets/img/bot.png'
+import defaultLogo from '../assets/img/bot.png'
+
+// Inject config from parent (library consumer)
+const config = inject('chatWidgetConfig', {})
 
 const emit = defineEmits(['registrationComplete'])
-
 const form = ref({ name: '', email: '', company: '' })
 const loading = ref(false)
-const logo = ref(defaultLogo)
 
-// On page load — check if user is already registered
+// Use configurable logo or fallback
+const logo = ref(config.logo || defaultLogo)
+
+// On page load — skip registration if user exists
 onMounted(() => {
   const savedUser = localStorage.getItem('userInfo')
-
   if (savedUser) {
     const parsedUser = JSON.parse(savedUser)
-    // Instantly skip registration
     emit('registrationComplete', {
       ...parsedUser,
       initialMessage: `Hi, I'm ${parsedUser.name}!`
@@ -92,32 +96,30 @@ async function handleSubmit() {
       company_name: form.value.company
     }
 
-    const response = await axios.post('https://ryu.futuremultiverse.com/chatbot_backend/api/register', payload)
+    const response = await axios.post(
+      config.registerApi || 'https://ryu.futuremultiverse.com/chatbot_backend/api/register',
+      payload
+    )
 
-    // If registration is successful
     if (response.data.success && response.data.user) {
       const userData = {
         ...response.data.user,
         initialMessage: `Hi, I'm ${response.data.user.name}!`
       }
 
-      // Save to localStorage permanently
       localStorage.setItem('userInfo', JSON.stringify(userData))
-
-      // Send user data to parent component (e.g. chat window)
       emit('registrationComplete', userData)
     } else {
       alert(response.data.message || 'Registration failed. Please try again.')
     }
-      } catch (error) {
-        console.error('Registration error:', error.response || error)
-        alert(
-          error.response?.data?.message ||
-          error.message ||
+  } catch (error) {
+    console.error('Registration error:', error.response || error)
+    alert(
+      error.response?.data?.message ||
+        error.message ||
         'Something went wrong while connecting to the server.'
-      )
-    }
-   finally {
+    )
+  } finally {
     loading.value = false
   }
 }
@@ -129,10 +131,11 @@ async function handleSubmit() {
   flex-direction: column;
   height: 100%;
   background: #f5f5f5;
+  font-family: 'Bai Jamjuree', sans-serif;
 }
 
 .header {
-  background: var(--gold);
+  background: var(--gold, #d4ae69);
   color: #fff;
   padding: 22px;
   border-bottom-left-radius: 20px;
@@ -204,13 +207,13 @@ input {
 }
 
 input:focus {
-  border-color: var(--gold);
+  border-color: var(--gold, #d4ae69);
   box-shadow: 0 0 0 2px rgba(212, 174, 105, 0.25);
 }
 
 .submit-btn {
   margin-top: 10px;
-  background: var(--gold);
+  background: var(--gold, #d4ae69);
   color: #fff;
   border: none;
   border-radius: 10px;
@@ -227,6 +230,6 @@ input:focus {
 }
 
 .powered strong {
-  color: var(--gold);
+  color: var(--gold, #d4ae69);
 }
 </style>

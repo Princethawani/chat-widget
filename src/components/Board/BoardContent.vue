@@ -1,7 +1,8 @@
+// src/components/Board/BoardContent.vue
 <template>
   <main class="content">
     <!-- Home Section -->
-    <Outer-Homesection
+    <OuterHomeSection
       v-if="view === 'home'"
       @goToRegistration="goToRegister"
     />
@@ -13,7 +14,7 @@
     />
 
     <!-- Chat Section -->
-    <Board-Action
+    <BoardAction
       v-else-if="view === 'chat'"
       @logout="logout"
     />
@@ -23,7 +24,7 @@
 <script setup>
 import { defineProps, defineEmits } from 'vue'
 import RegistrationForm from '../RegistrationForm.vue'
-import OuterHomesection from '../Outer/OuterHomeSection.vue'
+import OuterHomeSection from '../Outer/OuterHomeSection.vue'
 import BoardAction from './BoardAction.vue'
 
 defineProps({ view: String })

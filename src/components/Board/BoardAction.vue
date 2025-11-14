@@ -1,3 +1,4 @@
+// src/components/Board/BoardAction.vue
 <template>
   <div class="chat-container">
     <!-- Header -->
@@ -47,7 +48,8 @@
 import { ref, onMounted, nextTick } from 'vue'
 import axios from 'axios'
 import { EmojiButton } from '@joeattardi/emoji-button'
-import botAvatar from '@/assets/icons/bot.png'
+// import botAvatar from '@/assets/icons/bot.png'
+import botAvatar from '../../assets/icons/bot.png'
 
 const API_URL = 'https://ryu.futuremultiverse.com/chatbot_backend/api/test'
 
