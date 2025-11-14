@@ -1,17 +1,17 @@
 {
   "name": "vue-chat-widget-graceai",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "A customizable Vue 3 chat widget powered by GraceAI — perfect for embedding smart chat assistants in any app.",
   "author": "Prince Thawani",
   "license": "MIT",
   "private": false,
   "type": "module",
-
   "main": "dist/vue-chat-widget.umd.js",
   "module": "dist/vue-chat-widget.es.js",
   "style": "dist/index.css",
-  "files": ["dist"],
-
+  "files": [
+    "dist"
+  ],
   "exports": {
     ".": {
       "import": "./dist/vue-chat-widget.es.js",
@@ -21,7 +21,6 @@
       "default": "./dist/index.css"
     }
   },
-
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -29,16 +28,13 @@
     "lint": "eslint . --ext .js,.vue",
     "test:unit": "jest"
   },
-
   "peerDependencies": {
     "vue": "^3.0.0"
   },
-
   "dependencies": {
     "axios": "^1.7.7",
     "@joeattardi/emoji-button": "^4.6.4"
   },
-
   "devDependencies": {
     "@vitejs/plugin-vue": "^4.6.2",
     "@vue/test-utils": "^2.4.6",
@@ -51,7 +47,6 @@
     "vite": "^5.4.21",
     "vue-jest": "^5.0.0-alpha.10"
   },
-
   "browserslist": [
     "> 1%",
     "last 2 versions",
