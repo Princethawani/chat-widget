@@ -14,12 +14,23 @@
 </template>
 
 <script setup>
-import { ref, onMounted, inject, computed } from 'vue'
+import { ref, onMounted, inject, computed, watch } from 'vue'
 import BoardContent from '../Board/BoardContent.vue'
 // import BoardHeader from '../Board/BoardHeader.vue'
 
 import defaultFab from '../../assets/img/header-bg.jpeg'
 import defaultHeader from '../../assets/icons/bot.png'
+// import { inject,  } from 'vue'
+
+const widgetState = inject('chatWidgetState')
+
+// Watch for the openChat trigger
+watch(() => widgetState.openChatFlag, (value) => {
+  if (value) {
+    goToRegisterPage()     
+    widgetState.openChatFlag = false
+  }
+})
 
 const open = ref(false)
 const view = ref('home')
@@ -40,6 +51,13 @@ function handleNavigate(newView) {
   localStorage.setItem('chatView', newView)
 }
 
+function goToRegisterPage() {
+  togglePanel(true)
+  view.value = 'register'      // <-- go to registration view
+  localStorage.setItem('chatView', 'register')
+}
+
+
 onMounted(() => {
   const savedUser = localStorage.getItem('userInfo')
   const savedView = localStorage.getItem('chatView')
@@ -50,36 +68,39 @@ onMounted(() => {
 })
 </script>
 
+
 <style scoped lang="scss">
 .ga-fab {
   position: fixed;
-  bottom: 1.5rem;
+  bottom: 3.0rem;
   right: 1.5rem;
   width: 60px;
   height: 60px;
   border-radius: 50%;
-  background-size: cover;
-  background-repeat: no-repeat;
+  background: url('../../assets/img/header-bg.jpeg') center/cover no-repeat;
   border: none;
   cursor: pointer;
   z-index: 1001;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   transition: all 0.2s ease;
-}
-.ga-fab:hover {
-  transform: scale(1.05);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+
+  &:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+  }
 }
 
 .ga-panel {
   position: fixed;
-  bottom: 90px;
+  bottom: 120px;
   right: 1.5rem;
+  width: 380px;
   max-width: calc(100vw - 2rem);
+  height: calc(100vh - 120px);
   max-height: 600px;
   display: flex;
   flex-direction: column;
-  background: var(--chat-bg, #fff);
+  background: #fff;
   border-radius: 16px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
   overflow: hidden;

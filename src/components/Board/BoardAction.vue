@@ -230,7 +230,7 @@ function scrollToBottom() {
 /* Message Bubbles */
 .message {
   max-width: 75%;
-  padding: 0.7rem 0.9rem;
+  padding: 0.2rem 0.9rem;
   border-radius: 16px;
   line-height: 1.4;
   font-size: 0.9rem;

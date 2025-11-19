@@ -4,6 +4,11 @@ import path from 'path'
 
 export default defineConfig({
   plugins: [vue()],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, 'src')
+    }
+  },
   build: {
     lib: {
       entry: path.resolve(__dirname, 'src/index.js'),
@@ -18,6 +23,6 @@ export default defineConfig({
         }
       }
     },
-    cssCodeSplit: true // <- this will generate a separate style file automatically
+    cssCodeSplit: true // generates dist/style.css
   }
 })

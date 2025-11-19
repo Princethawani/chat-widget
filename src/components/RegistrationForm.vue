@@ -1,4 +1,3 @@
-// src/components/RegistrationForm.vue
 <template>
   <div class="home-page">
     <div class="header">
@@ -11,6 +10,8 @@
 
     <div class="content-container">
       <form class="user-form" @submit.prevent="handleSubmit">
+
+        <!-- NAME -->
         <div class="form-group">
           <label for="name">Full Name *</label>
           <input
@@ -22,6 +23,7 @@
           />
         </div>
 
+        <!-- EMAIL -->
         <div class="form-group">
           <label for="email">Email Address *</label>
           <input
@@ -33,6 +35,7 @@
           />
         </div>
 
+        <!-- COMPANY -->
         <div class="form-group">
           <label for="company">Company Name (Optional)</label>
           <input
@@ -43,40 +46,120 @@
           />
         </div>
 
-        <button class="submit-btn" type="submit" :disabled="loading">
+        <!-- TERMS CHECKBOX -->
+        <div class="form-group terms-box">
+          <label class="checkbox-container">
+            <input type="checkbox" v-model="agreeToTerms" />
+            <span class="checkmark"></span>
+            <span class="terms-text">
+              I agree to the
+              <a href="#" target="_blank">Terms &amp; Conditions</a> *
+            </span>
+          </label>
+        </div>
+
+        
+
+        <!-- SUBMIT BUTTON -->
+        <button class="submit-btn" type="submit" :disabled="loading || !recaptchaReady">
           <span v-if="loading">Registering...</span>
-          <span v-else>Start Chat</span>
+          <span v-else>
+            <template v-if="!recaptchaReady">Loading...</template>
+            <template v-else>Start Chat</template>
+          </span>
         </button>
+
       </form>
     </div>
   </div>
 </template>
 
 <script setup>
+
+/* global grecaptcha */
 import { ref, onMounted, inject } from 'vue'
 import axios from 'axios'
-// import defaultLogo from '@/assets/img/bot.png'
-import defaultLogo from '../assets/img/bot.png'
+import defaultLogo from '@/assets/img/bot.png'
 
-// Inject config from parent (library consumer)
-const config = inject('chatWidgetConfig', {})
-
+const config = inject('chatWidgetConfig', {}) // contains platform + overrides
 const emit = defineEmits(['registrationComplete'])
-const form = ref({ name: '', email: '', company: '' })
-const loading = ref(false)
 
-// Use configurable logo or fallback
+const form = ref({ name: '', email: '', company: '' })
+const agreeToTerms = ref(false)
+const loading = ref(false)
 const logo = ref(config.logo || defaultLogo)
 
-// On page load — skip registration if user exists
-onMounted(() => {
+// reCAPTCHA
+const recaptchaSiteKey = config.recaptchaSiteKey || '6LfiLw8sAAAAANizVK9iW1cRardK1PmPScu7yDIL'
+const recaptchaReady = ref(false)
+
+function loadRecaptcha(siteKey) {
+  return new Promise((resolve, reject) => {
+    if (typeof window === 'undefined') return reject(new Error('No window'))
+    if (window.grecaptcha && typeof window.grecaptcha.execute === 'function') {
+      recaptchaReady.value = true
+      return resolve()
+    }
+    if (document.getElementById('recaptcha-script')) {
+      const check = setInterval(() => {
+        if (window.grecaptcha && typeof window.grecaptcha.execute === 'function') {
+          clearInterval(check)
+          recaptchaReady.value = true
+          resolve()
+        }
+      }, 200)
+
+      setTimeout(() => {
+        clearInterval(check)
+        if (!recaptchaReady.value) reject(new Error('reCAPTCHA load timeout'))
+      }, 8000)
+
+      return
+    }
+
+    const script = document.createElement('script')
+    script.id = 'recaptcha-script'
+    script.src = `https://www.google.com/recaptcha/api.js?render=${siteKey}`
+    script.async = true
+    script.defer = true
+    script.onload = () => {
+      const check = setInterval(() => {
+        if (window.grecaptcha && typeof window.grecaptcha.execute === 'function') {
+          clearInterval(check)
+          recaptchaReady.value = true
+          resolve()
+        }
+      }, 200)
+
+      setTimeout(() => {
+        clearInterval(check)
+        if (!recaptchaReady.value) reject(new Error('reCAPTCHA init timeout'))
+      }, 8000)
+    }
+    script.onerror = () => reject(new Error('Failed to load reCAPTCHA script'))
+    document.head.appendChild(script)
+  })
+}
+
+// Auto login using saved user
+onMounted(async () => {
+  try {
+    await loadRecaptcha(recaptchaSiteKey)
+  } catch (err) {
+    console.warn('reCAPTCHA failed to load:', err)
+  }
+
   const savedUser = localStorage.getItem('userInfo')
   if (savedUser) {
-    const parsedUser = JSON.parse(savedUser)
-    emit('registrationComplete', {
-      ...parsedUser,
-      initialMessage: `Hi, I'm ${parsedUser.name}!`
-    })
+    try {
+      const parsed = JSON.parse(savedUser)
+      if (parsed?.name && parsed?.email) {
+        emit('registrationComplete', parsed)
+        return
+      }
+    } catch (e) {
+      localStorage.removeItem('userInfo')
+    }
   }
 })
 
@@ -87,64 +170,95 @@ async function handleSubmit() {
     return
   }
 
+  if (!agreeToTerms.value) {
+    alert('You must agree to the Terms & Conditions before continuing.')
+    return
+  }
+
+  if (!recaptchaReady.value) {
+    alert('Captcha is not ready yet. Please wait a moment.')
+    return
+  }
+
+  if (!config.platform) {
+    alert('Platform is missing. Please contact support.')
+    return
+  }
+
   loading.value = true
+
+  let recaptchaToken = ''
+  try {
+    recaptchaToken = await grecaptcha.execute(recaptchaSiteKey, { action: 'register' })
+  } catch (err) {
+    console.error('grecaptcha.execute error:', err)
+    alert('Captcha verification failed. Try again.')
+    loading.value = false
+    return
+  }
 
   try {
     const payload = {
       name: form.value.name,
       email: form.value.email,
-      company_name: form.value.company
+      company_name: form.value.company,
+      recaptcha_token: recaptchaToken,
+      platform: config.platform        // << 🔥 IMPORTANT UPDATED LINE
     }
 
     const response = await axios.post(
-      config.registerApi || 'https://ryu.futuremultiverse.com/chatbot_backend/api/register',
+      // config.registerApi || 'https://ryu.futuremultiverse.com/chatbot_backend/api/register',
+      config.registerApi || 'http://localhost:9000/api/register',
       payload
     )
 
-    if (response.data.success && response.data.user) {
-      const userData = {
+    if (response.data && response.data.success && response.data.user) {
+      const user = {
         ...response.data.user,
-        initialMessage: `Hi, I'm ${response.data.user.name}!`
+        token: response.data.token || btoa(form.value.email),
+        platform: config.platform, // << store it too
+        initialMessage: `Hi, I'm ${response.data.user.name || form.value.name}!`
       }
 
-      localStorage.setItem('userInfo', JSON.stringify(userData))
-      emit('registrationComplete', userData)
+      localStorage.setItem('userInfo', JSON.stringify(user))
+      emit('registrationComplete', user)
     } else {
-      alert(response.data.message || 'Registration failed. Please try again.')
+      alert(response.data?.message || 'Registration failed.')
     }
   } catch (error) {
-    console.error('Registration error:', error.response || error)
-    alert(
-      error.response?.data?.message ||
-        error.message ||
-        'Something went wrong while connecting to the server.'
-    )
+    console.error('Registration error:', error?.response || error)
+    alert(error?.response?.data?.message || 'Server error.')
   } finally {
     loading.value = false
   }
 }
 </script>
 
+
 <style scoped>
+/* base layout (unchanged) */
 .home-page {
   display: flex;
   flex-direction: column;
   height: 100%;
   background: #f5f5f5;
   font-family: 'Bai Jamjuree', sans-serif;
+
 }
 
 .header {
-  background: var(--gold, #d4ae69);
+  background: #D4AE69;
   color: #fff;
   padding: 22px;
   border-bottom-left-radius: 20px;
   border-bottom-right-radius: 20px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  height:200px;
+  height: 200px;
   display: flex;
-  align-items: flex-start; /* top alignment */
-  gap: 12px; /* spacing between logo and text */
+  align-items: flex-start;
+  gap: 12px;
+  font-family: 'Bai Jamjuree', sans-serif;
+
 }
 
 .future-logo {
@@ -157,7 +271,7 @@ async function handleSubmit() {
 .header-text {
   display: flex;
   flex-direction: column;
-  margin-top: 10px;
+  margin-top: 3px;
 }
 
 .header h2 {
@@ -207,13 +321,13 @@ input {
 }
 
 input:focus {
-  border-color: var(--gold, #d4ae69);
+  border-color: #D4AE69;
   box-shadow: 0 0 0 2px rgba(212, 174, 105, 0.25);
 }
 
 .submit-btn {
   margin-top: 10px;
-  background: var(--gold, #d4ae69);
+  background: #D4AE69;
   color: #fff;
   border: none;
   border-radius: 10px;
@@ -223,6 +337,11 @@ input:focus {
   cursor: pointer;
 }
 
+.submit-btn[disabled] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .powered {
   text-align: center;
   color: #888;
@@ -230,6 +349,65 @@ input:focus {
 }
 
 .powered strong {
-  color: var(--gold, #d4ae69);
+  color: #D4AE69;
+}
+
+/* --- TERMS CHECKBOX --- */
+.checkbox-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+}
+
+.checkbox-container input {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.checkmark {
+  width: 20px;
+  height: 20px;
+  background-color: #eee;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  display: inline-block;
+  transition: 0.2s;
+}
+
+.checkbox-container input:checked ~ .checkmark {
+  background-color: #D4AE69;
+  border-color: #D4AE69;
+}
+
+.checkmark:after {
+  content: "";
+  position: relative;
+  left: 6px;
+  top: 2px;
+  width: 5px;
+  height: 10px;
+  border: solid white;
+  border-width: 0 3px 3px 0;
+  transform: rotate(45deg);
+  display: none;
+}
+
+.checkbox-container input:checked ~ .checkmark:after {
+  display: block;
+}
+
+.terms-text {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.terms-text a {
+  color: #D4AE69;
+  font-weight: bold;
+  text-decoration: none;
 }
 </style>

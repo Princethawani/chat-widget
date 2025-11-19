@@ -43,7 +43,7 @@ function toChat(user) {
 
 // Logout user
 function logout() {
-  localStorage.removeItem('userInfo')
+  // localStorage.removeItem('userInfo')
   emit('navigate', 'home')
 }
 </script>
