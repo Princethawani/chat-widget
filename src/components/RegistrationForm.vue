@@ -81,7 +81,7 @@ import { ref, onMounted, inject } from 'vue'
 import axios from 'axios'
 import defaultLogo from '@/assets/img/bot.png'
 
-const config = inject('chatWidgetConfig', {}) // contains platform + overrides
+const config = inject('chatWidgetConfig', {}) // optional overrides
 const emit = defineEmits(['registrationComplete'])
 
 const form = ref({ name: '', email: '', company: '' })
@@ -101,6 +101,7 @@ function loadRecaptcha(siteKey) {
       return resolve()
     }
     if (document.getElementById('recaptcha-script')) {
+      // Wait until grecaptcha is available
       const check = setInterval(() => {
         if (window.grecaptcha && typeof window.grecaptcha.execute === 'function') {
           clearInterval(check)
@@ -108,12 +109,11 @@ function loadRecaptcha(siteKey) {
           resolve()
         }
       }, 200)
-
+      // timeout fallback
       setTimeout(() => {
         clearInterval(check)
         if (!recaptchaReady.value) reject(new Error('reCAPTCHA load timeout'))
       }, 8000)
-
       return
     }
 
@@ -123,6 +123,7 @@ function loadRecaptcha(siteKey) {
     script.async = true
     script.defer = true
     script.onload = () => {
+      // grecaptcha may not be immediately available; wait briefly
       const check = setInterval(() => {
         if (window.grecaptcha && typeof window.grecaptcha.execute === 'function') {
           clearInterval(check)
@@ -130,7 +131,7 @@ function loadRecaptcha(siteKey) {
           resolve()
         }
       }, 200)
-
+      // timeout fallback
       setTimeout(() => {
         clearInterval(check)
         if (!recaptchaReady.value) reject(new Error('reCAPTCHA init timeout'))
@@ -141,23 +142,26 @@ function loadRecaptcha(siteKey) {
   })
 }
 
-// Auto login using saved user
+// Auto login using saved user (skip registration if present)
 onMounted(async () => {
   try {
     await loadRecaptcha(recaptchaSiteKey)
   } catch (err) {
     console.warn('reCAPTCHA failed to load:', err)
+    // Let recaptchaReady remain false — button will show Loading... and disabled
   }
 
   const savedUser = localStorage.getItem('userInfo')
   if (savedUser) {
     try {
       const parsed = JSON.parse(savedUser)
+      // Basic sanity check
       if (parsed?.name && parsed?.email) {
         emit('registrationComplete', parsed)
         return
       }
     } catch (e) {
+      console.warn('Invalid userInfo in localStorage, clearing.')
       localStorage.removeItem('userInfo')
     }
   }
@@ -176,23 +180,20 @@ async function handleSubmit() {
   }
 
   if (!recaptchaReady.value) {
-    alert('Captcha is not ready yet. Please wait a moment.')
-    return
-  }
-
-  if (!config.platform) {
-    alert('Platform is missing. Please contact support.')
+    alert('Captcha is not ready yet. Please wait a moment and try again.')
     return
   }
 
   loading.value = true
 
+  // obtain reCAPTCHA token (v3)
   let recaptchaToken = ''
   try {
+    // eslint-disable-next-line no-undef
     recaptchaToken = await grecaptcha.execute(recaptchaSiteKey, { action: 'register' })
   } catch (err) {
     console.error('grecaptcha.execute error:', err)
-    alert('Captcha verification failed. Try again.')
+    alert('Captcha verification failed. Please try again.')
     loading.value = false
     return
   }
@@ -202,13 +203,11 @@ async function handleSubmit() {
       name: form.value.name,
       email: form.value.email,
       company_name: form.value.company,
-      recaptcha_token: recaptchaToken,
-      platform: config.platform        // << 🔥 IMPORTANT UPDATED LINE
+      recaptcha_token: recaptchaToken
     }
 
     const response = await axios.post(
-      // config.registerApi || 'https://ryu.futuremultiverse.com/chatbot_backend/api/register',
-      config.registerApi || 'http://localhost:9000/api/register',
+      config.registerApi || 'https://ryu.futuremultiverse.com/chatbot_backend/api/register',
       payload
     )
 
@@ -216,24 +215,21 @@ async function handleSubmit() {
       const user = {
         ...response.data.user,
         token: response.data.token || btoa(form.value.email),
-        platform: config.platform, // << store it too
         initialMessage: `Hi, I'm ${response.data.user.name || form.value.name}!`
       }
-
       localStorage.setItem('userInfo', JSON.stringify(user))
       emit('registrationComplete', user)
     } else {
-      alert(response.data?.message || 'Registration failed.')
+      alert(response.data?.message || 'Registration failed. Please try again.')
     }
   } catch (error) {
     console.error('Registration error:', error?.response || error)
-    alert(error?.response?.data?.message || 'Server error.')
+    alert(error?.response?.data?.message || 'Server error during registration.')
   } finally {
     loading.value = false
   }
 }
 </script>
-
 
 <style scoped>
 /* base layout (unchanged) */
